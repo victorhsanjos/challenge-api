@@ -92,7 +92,7 @@ UserSchema.pre('save', async function (next) {
     return next();
 });
 
-userSchema.methods.generateAuthToken = async function () {
+UserSchema.methods.generateAuthToken = async function () {
     const user = this;
     const token = jwt.sign({ _id: user._id }, process.env.JWT_KEY);
 
@@ -103,7 +103,7 @@ userSchema.methods.generateAuthToken = async function () {
     return token
 }
 
-userSchema.statics.findByCredentials = async (email, password) => {
+UserSchema.statics.findByCredentials = async (email, password) => {
     const user = await User.findOne({ email });
 
     if (!user) {

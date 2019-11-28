@@ -1,10 +1,16 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
-const validator = require('validator')
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken')
+const createError = require('http-errors');
+const NodeGeocoder = require('node-geocoder');
 
-const PhoneSchema = new Schema({
+const geocoder = NodeGeocoder({
+    provider: process.env.GEOCODER_PROVIDER,
+    apiKey: process.env.GEOCODER_API_KEY
+});
+
+const phoneSchema = new Schema({
     ddd: {
         type: String,
         required: true
@@ -13,9 +19,9 @@ const PhoneSchema = new Schema({
         type: String,
         required: true,
     }
-});
+}, { _id: false, autoIndex: false });
 
-const GeolocationSchema = new Schema({
+const geolocationSchema = new Schema({
     type: {
         type: String,
         enum: ['Point'],
@@ -25,9 +31,9 @@ const GeolocationSchema = new Schema({
         type: [Number],
         required: true
     }
-});
+}, { _id: false, autoIndex: false });
 
-const UserSchema = new Schema({
+const userSchema = new Schema({
     name: {
         type: String,
         required: true
@@ -35,38 +41,25 @@ const UserSchema = new Schema({
     email: {
         type: String,
         required: true,
-        unique: true,
-        validate: value => {
-            if (!validator.isEmail(value)) {
-                throw new Error({ error: 'Invalid Email address' });
-            }
-        }
+        unique: true
     },
     password: {
         type: String,
-        required: true,
-        select: false
+        required: true
     },
     phones: {
-        type: [PhoneSchema],
+        type: [phoneSchema],
         default: undefined
     },
-    cep: {
+    zipcode: {
         type: String,
-        required: true,
-        validate: value => {
-            if (!validator.isPostalCode(value, 'BR')) {
-                throw new Error({ error: 'Invalid Post code' });
-            }
-        }
+        required: true
     },
     geolocation: {
-        type: GeolocationSchema,
-        required: true
+        type: geolocationSchema,
     },
     token: {
         type: String,
-        required: true,
     },
     created_at: {
         type: Date,
@@ -80,9 +73,9 @@ const UserSchema = new Schema({
         type: Date,
         default: Date.now
     }
-});
+}, { versionKey: false });
 
-UserSchema.pre('save', async function (next) {
+userSchema.pre('save', async function (next) {
     const user = this;
 
     if (user.isModified('password')) {
@@ -92,8 +85,9 @@ UserSchema.pre('save', async function (next) {
     return next();
 });
 
-UserSchema.methods.generateAuthToken = async function () {
+userSchema.methods.generateAuthToken = async function () {
     const user = this;
+
     const token = jwt.sign({ _id: user._id }, process.env.JWT_KEY);
 
     user.token = token;
@@ -103,20 +97,44 @@ UserSchema.methods.generateAuthToken = async function () {
     return token
 }
 
-UserSchema.statics.findByCredentials = async (email, password) => {
+userSchema.methods.findGeolocation = async function () {
+    const user = this;
+
+    const results = await geocoder.geocode(user.zipcode);
+
+    if (results.length) {
+        const { latitude, longitude } = results[0];
+        const geolocation = {
+            type: 'Point',
+            coordinates: [latitude, longitude]
+        };
+
+        user.geolocation = geolocation;
+
+        user.save();
+    }
+}
+
+userSchema.statics.findByEmail = async (email) => {
+    return await User.findOne({ email });
+}
+
+userSchema.statics.findByCredentials = async (email, password) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-        throw new Error({ error: 'Invalid login credentials' });
+        throw new createError(400, 'Invalid login credentials');
     }
 
     const isPasswordMatch = await bcrypt.compare(password, user.password);
 
     if (!isPasswordMatch) {
-        throw new Error({ error: 'Invalid login credentials' });
+        throw new createError(401, 'Invalid login credentials');
     }
 
     return user;
 }
 
-mongoose.model('User', UserSchema);
+const User = mongoose.model('User', userSchema)
+
+module.exports = User;

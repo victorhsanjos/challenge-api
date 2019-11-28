@@ -15,9 +15,9 @@ const Authenticate = async (req, res, next) => {
         req.user = user;
         req.token = token;
 
-        next()
+        next();
     } catch (error) {
-        res.status(401).send({ error: 'Not authorized to access this resource' });
+        res.status(401).json({ message: 'Not authorized to access this resource' });
     }
 }
 

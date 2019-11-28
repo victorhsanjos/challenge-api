@@ -1,19 +1,23 @@
+const { validationResult } = require('express-validator');
+const User = require('../../User');
+
 module.exports = {
     async store(req, res) {
-        //Login a registered user
+        const errors = validationResult(req);
+
+        if (!errors.isEmpty()) {
+            return res.status(422).json(errors);
+        }
+
         try {
-            const { email, password } = req.body
-            const user = await User.findByCredentials(email, password)
-            
-            if (!user) {
-                return res.status(401).send({ error: 'Login failed! Check authentication credentials' })
-            }
+            const { email, password } = req.body;
+            const user = await User.findByCredentials(email, password);
 
             const token = await user.generateAuthToken();
 
-            res.json(user, token);
-        } catch (error) {
-            res.status(400).send(error)
+            return res.json(user);
+        } catch (err) {
+            return res.status(err.status).json({ error: err.message });
         }
     }
 };

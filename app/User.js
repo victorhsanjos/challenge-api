@@ -1,5 +1,8 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
+const validator = require('validator')
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken')
 
 const PhoneSchema = new Schema({
     ddd: {
@@ -32,7 +35,12 @@ const UserSchema = new Schema({
     email: {
         type: String,
         required: true,
-        unique: true
+        unique: true,
+        validate: value => {
+            if (!validator.isEmail(value)) {
+                throw new Error({ error: 'Invalid Email address' });
+            }
+        }
     },
     password: {
         type: String,
@@ -46,8 +54,13 @@ const UserSchema = new Schema({
     cep: {
         type: String,
         required: true,
+        validate: value => {
+            if (!validator.isPostalCode(value, 'BR')) {
+                throw new Error({ error: 'Invalid Post code' });
+            }
+        }
     },
-    geolocation:{
+    geolocation: {
         type: GeolocationSchema,
         required: true
     },
@@ -68,5 +81,42 @@ const UserSchema = new Schema({
         default: Date.now
     }
 });
+
+UserSchema.pre('save', async function (next) {
+    const user = this;
+
+    if (user.isModified('password')) {
+        user.password = await bcrypt.hash(user.password, 8);
+    }
+
+    return next();
+});
+
+userSchema.methods.generateAuthToken = async function () {
+    const user = this;
+    const token = jwt.sign({ _id: user._id }, process.env.JWT_KEY);
+
+    user.token = token;
+
+    await user.save()
+
+    return token
+}
+
+userSchema.statics.findByCredentials = async (email, password) => {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+        throw new Error({ error: 'Invalid login credentials' });
+    }
+
+    const isPasswordMatch = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordMatch) {
+        throw new Error({ error: 'Invalid login credentials' });
+    }
+
+    return user;
+}
 
 mongoose.model('User', UserSchema);

@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken')
+const jwt = require('jsonwebtoken');
 const createError = require('http-errors');
 const NodeGeocoder = require('node-geocoder');
 
@@ -92,10 +92,10 @@ userSchema.methods.generateAuthToken = async function () {
 
     user.token = token;
 
-    await user.save()
+    await user.save();
 
-    return token
-}
+    return token;
+};
 
 userSchema.methods.findGeolocation = async function () {
     const user = this;
@@ -113,11 +113,11 @@ userSchema.methods.findGeolocation = async function () {
 
         user.save();
     }
-}
+};
 
 userSchema.statics.findByEmail = async (email) => {
     return await User.findOne({ email });
-}
+};
 
 userSchema.statics.findByCredentials = async (email, password) => {
     const user = await User.findOne({ email });
@@ -133,8 +133,8 @@ userSchema.statics.findByCredentials = async (email, password) => {
     }
 
     return user;
-}
+};
 
-const User = mongoose.model('User', userSchema)
+const User = mongoose.model('User', userSchema);
 
 module.exports = User;

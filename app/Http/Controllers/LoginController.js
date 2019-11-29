@@ -13,7 +13,9 @@ module.exports = {
             const { email, password } = req.body;
             const user = await User.findByCredentials(email, password);
 
-            const token = await user.generateAuthToken();
+            await user.generateAuthToken();
+
+            await user.updateLastLogin();
 
             return res.json(user);
         } catch (err) {

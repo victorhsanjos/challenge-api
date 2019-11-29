@@ -18,6 +18,6 @@ app.use(function (req, res, next) {
 });
 
 // 500
-app.use(function (err, req, res, next) {
+app.use(function (err, req, res, next) { 
     return res.status(500).json({ message: err });
 });

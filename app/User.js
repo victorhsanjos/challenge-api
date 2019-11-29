@@ -135,6 +135,14 @@ userSchema.statics.findByCredentials = async (email, password) => {
     return user;
 };
 
+userSchema.methods.updateLastLogin = async function () {
+    const user = this;
+
+    user.last_login_at = Date.now();
+
+    user.save();
+};
+
 const User = mongoose.model('User', userSchema);
 
 module.exports = User;

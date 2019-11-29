@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const Authenticate = require('../app/Http/Middleware/Authenticate');
+const LastLogin = require('../app/Http/Middleware/LastLogin');
 
 const RegisterController = require('../app/Http/Controllers/RegisterController');
 const LoginController = require('../app/Http/Controllers/LoginController');
@@ -29,6 +30,6 @@ router.post('/signin', [
     check('password').exists().withMessage('Field is required').bail().isLength({ min: 6 }).withMessage('Must be at least 6').bail()
 ], LoginController.store);
 
-router.get('/user', Authenticate, UserController.show);
+router.get('/user/:id', [Authenticate, LastLogin], UserController.show);
 
 module.exports = router;

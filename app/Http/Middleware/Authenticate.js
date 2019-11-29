@@ -2,28 +2,35 @@ const jwt = require('jsonwebtoken');
 const User = require('../../User');
 
 const Authenticate = async (req, res, next) => {
-    const auth = req.get('authorization');
+    let token = req.get('authorization');
 
-    if (!auth) {
-        return res.status(401).json({ message: 'Authorization Required' });
+    if (token && token.startsWith('Bearer ')) {
+        // Remove Bearer from string
+        token = token.slice(7, token.length);
     }
 
-    const token = auth.replace('Bearer ', '');
-    const data = jwt.verify(token, process.env.JWT_KEY);
+    if (token) {
+        jwt.verify(token, process.env.JWT_KEY, async (err, decoded) => {
+            if (err) {
+                return res.status(401).json({
+                    message: 'Token is not valid'
+                });
+            } else {
+                const user = await User.findOne({ _id: decoded._id, 'token': token });
 
-    try {
-        const user = await User.findOne({ _id: data._id, 'token': token });
+                if (!user) {
+                    res.status(401).json({ message: 'Not authorized to access this resource' });
+                }
 
-        if (!user) {
-            throw new Error();
-        }
+                req.user = user;
 
-        req.user = user;
-        req.token = token;
-
-        next();
-    } catch (error) {
-        res.status(401).json({ message: 'Not authorized to access this resource' });
+                return next();
+            }
+        });
+    } else {
+        return res.status(400).json({
+            message: 'Auth token is not supplied'
+        });
     }
 };
 
